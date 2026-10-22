@@ -10,6 +10,7 @@
   const KEY_READ = 'da-read';
   const KEY_THEME = 'da-theme';
   const KEY_FONT = 'da-font';
+  const KEY_BM = 'da-bookmarks';
 
   // ---------- localStorage ----------
   const store = {
@@ -102,13 +103,25 @@
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
 
   // ---------- ピン ----------
-  const pinIcon = id => L.divIcon({
-    className: '',
-    html: `<div class="pin${readSet.has(id) ? ' read' : ''}${selected?.pageid === id ? ' sel' : ''}"></div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-    popupAnchor: [0, -8],
-  });
+  const pinIcon = id => {
+    const sel = selected?.pageid === id ? ' sel' : '';
+    if (isSaved(id)) {
+      return L.divIcon({
+        className: '',
+        html: `<div class="star${sel}">★</div>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+        popupAnchor: [0, -10],
+      });
+    }
+    return L.divIcon({
+      className: '',
+      html: `<div class="pin${readSet.has(id) ? ' read' : ''}${sel}"></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+      popupAnchor: [0, -8],
+    });
+  };
 
   const cluster = L.markerClusterGroup({
     maxClusterRadius: 45,
@@ -118,11 +131,12 @@
     iconCreateFunction(c) {
       const children = c.getAllChildMarkers();
       const allRead = children.every(m => readSet.has(m.options.pageid));
+      const hasSaved = children.some(m => isSaved(m.options.pageid));
       const n = c.getChildCount();
       const size = n < 10 ? 28 : n < 100 ? 34 : 40;
       return L.divIcon({
         className: '',
-        html: `<div class="cluster${allRead ? ' read' : ''}" style="width:${size}px;height:${size}px">${n}</div>`,
+        html: `<div class="cluster${allRead ? ' read' : ''}${hasSaved ? ' saved' : ''}" style="width:${size}px;height:${size}px">${n}</div>`,
         iconSize: [size, size],
       });
     },
@@ -238,9 +252,13 @@
       `<div class="dist">${esc(distanceText(item))}</div>` +
       body +
       `<div class="actions"><button class="btn small read-full" type="button">全文を読む</button>` +
-      `<a class="link" href="${esc(url)}" target="_blank" rel="noopener">別タブで開く</a></div>`;
+      `<button class="btn small bm" type="button"></button>` +
+      `<a class="link" href="${esc(url)}" target="_blank" rel="noopener">別タブで開く</a></div>` +
+      `<div class="bm-lists"></div>`;
     panelBody.querySelector('.link').addEventListener('click', () => markRead(item.pageid));
     panelBody.querySelector('.read-full').addEventListener('click', () => openReader(item));
+    panelBody.querySelector('.bm').addEventListener('click', () => toggleBookmark(item));
+    updateBmUi(item);
   }
 
   // ---------- 全文表示（記事ページを iframe で埋め込む） ----------
@@ -258,9 +276,12 @@
       `<div class="reader-bar">` +
       `<button class="btn small back" type="button">戻る</button>` +
       `<span class="rtitle">${esc(item.title)}</span>` +
+      `<button class="btn small bm" type="button"></button>` +
       `<a class="link" href="${esc(url)}" target="_blank" rel="noopener">別タブ</a>` +
       `</div>` +
       `<iframe class="reader" src="${esc(url)}" title="${esc(item.title)}"></iframe>`;
+    panelBody.querySelector('.bm').addEventListener('click', () => toggleBookmark(item));
+    updateBmUi(item);
     // 記事内のリンクをたどった後は history.back() が iframe 側に効くので、ボタンでは直接閉じる
     panelBody.querySelector('.back').addEventListener('click', exitReader);
     map.invalidateSize();
@@ -273,6 +294,103 @@
   }
 
   window.addEventListener('popstate', () => { if (isFull()) exitReader(); });
+
+  // ---------- ブックマーク（このアプリ内のみ。localStorage に保存） ----------
+  // items: { pageid: { title, lat, lon, lists: [リストID, ...] } }
+  const bm = (() => {
+    const d = store.get(KEY_BM, null);
+    if (d && Array.isArray(d.lists) && d.lists.length && d.items) {
+      if (!d.lists.some(l => l.id === d.target)) d.target = d.lists[0].id;
+      return d;
+    }
+    return { lists: [{ id: 'default', name: 'ブックマーク' }], target: 'default', items: {} };
+  })();
+  const saveBm = () => store.set(KEY_BM, bm);
+  const listName = id => bm.lists.find(l => l.id === id)?.name || '';
+  function isSaved(id) { return !!bm.items[id]; }
+
+  // 事前に選んだ保存先リストに追加する。すでに入っていれば外す
+  function toggleBookmark(item) {
+    const e = bm.items[item.pageid];
+    if (e?.lists.includes(bm.target)) {
+      e.lists = e.lists.filter(l => l !== bm.target);
+      if (!e.lists.length) delete bm.items[item.pageid];
+    } else if (e) {
+      e.lists.push(bm.target);
+    } else {
+      bm.items[item.pageid] = { title: item.title, lat: item.lat, lon: item.lon, lists: [bm.target] };
+    }
+    saveBm();
+    refreshPin(item.pageid);
+    cluster.refreshClusters(markers.get(item.pageid));
+    updateBmUi(item);
+  }
+
+  function updateBmUi(item) {
+    const btn = panelBody.querySelector('.bm');
+    if (btn) {
+      const on = !!bm.items[item.pageid]?.lists.includes(bm.target);
+      btn.textContent = on ? '★ 保存済み' : '☆ 保存';
+      btn.setAttribute('aria-pressed', String(on));
+      btn.title = '保存先：' + listName(bm.target);
+    }
+    const el = panelBody.querySelector('.bm-lists');
+    if (el) {
+      const e = bm.items[item.pageid];
+      el.textContent = e ? '保存先：' + e.lists.map(listName).join('、') : '';
+    }
+  }
+
+  // 設定メニューのリスト操作
+  const bmSelect = document.getElementById('bm-target');
+  function renderBmSelect() {
+    bmSelect.innerHTML = bm.lists.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
+    bmSelect.value = bm.target;
+    document.getElementById('btn-bm-del').disabled = bm.lists.length <= 1;
+    if (selected) updateBmUi(selected);
+  }
+  renderBmSelect();
+
+  bmSelect.addEventListener('change', () => {
+    bm.target = bmSelect.value;
+    saveBm();
+    renderBmSelect();
+  });
+  document.getElementById('btn-bm-new').addEventListener('click', () => {
+    const name = prompt('新しいリストの名前', '')?.trim();
+    if (!name) return;
+    const id = 'l' + Date.now().toString(36);
+    bm.lists.push({ id, name });
+    bm.target = id;
+    saveBm();
+    renderBmSelect();
+  });
+  document.getElementById('btn-bm-rename').addEventListener('click', () => {
+    const list = bm.lists.find(l => l.id === bm.target);
+    const name = prompt('リストの名前', list.name)?.trim();
+    if (!name) return;
+    list.name = name;
+    saveBm();
+    renderBmSelect();
+  });
+  document.getElementById('btn-bm-del').addEventListener('click', () => {
+    if (bm.lists.length <= 1) return;
+    const id = bm.target;
+    if (!confirm(`リスト「${listName(id)}」を削除しますか？`)) return;
+    bm.lists = bm.lists.filter(l => l.id !== id);
+    const changed = [];
+    for (const [pid, e] of Object.entries(bm.items)) {
+      if (!e.lists.includes(id)) continue;
+      e.lists = e.lists.filter(l => l !== id);
+      if (!e.lists.length) delete bm.items[pid];
+      changed.push(+pid);
+    }
+    bm.target = bm.lists[0].id;
+    saveBm();
+    changed.forEach(refreshPin);
+    cluster.refreshClusters();
+    renderBmSelect();
+  });
 
   async function showArticle(item) {
     const prev = selected;
@@ -375,7 +493,7 @@
       const res = await fetch(`${API}?${params}`, { signal: controller.signal });
       const data = await res.json();
       if (data.error) throw new Error(data.error.code);
-      updateMarkers(data.query?.geosearch || []);
+      updateMarkers(data.query?.geosearch || [], map.getBounds());
       const n = data.query?.geosearch?.length || 0;
       setStatus(`${n}件${n >= 500 ? '（上限）' : ''}${clipped ? '・中心付近のみ' : ''}`);
     } catch (e) {
@@ -384,8 +502,14 @@
     }
   }
 
-  function updateMarkers(items) {
-    const ids = new Set(items.map(i => i.pageid));
+  function updateMarkers(found, view) {
+    // 検索結果に入らなかった（上限・中心付近のみ等）ブックマーク済み記事も、表示範囲内なら出す
+    const ids = new Set(found.map(i => i.pageid));
+    const extra = Object.entries(bm.items)
+      .filter(([pid, e]) => !ids.has(+pid) && view.contains([e.lat, e.lon]))
+      .map(([pid, e]) => ({ pageid: +pid, title: e.title, lat: e.lat, lon: e.lon }));
+    const items = found.concat(extra);
+    extra.forEach(i => ids.add(i.pageid));
     const toRemove = [];
     markers.forEach((m, id) => {
       if (!ids.has(id) && !m.isPopupOpen() && selected?.pageid !== id) { toRemove.push(m); markers.delete(id); }
