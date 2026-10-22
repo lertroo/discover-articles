@@ -28,12 +28,13 @@
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
+html { font-size: var(--font-base); } /* rem の基準。文字サイズ設定をすべての rem に効かせる */
 body {
   display: flex;
   flex-direction: column;
   background: var(--bg);
   color: var(--fg);
-  font: var(--font-base)/1.4 system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font: 1rem/1.4 system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
 }
 
 /* ヘッダー */
@@ -174,6 +175,26 @@ body {
 }
 .pin.read { background: var(--pin-read); }
 .pin.sel { transform: scale(1.4); box-shadow: 0 0 0 3px var(--accent); }
+
+/* ピン横の記事名 */
+.leaflet-tooltip.label {
+  max-width: 11em;
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .75rem;
+  line-height: 1.35;
+  color: var(--fg);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  border: none;
+  border-radius: 3px;
+  box-shadow: none;
+  cursor: pointer;
+}
+.leaflet-tooltip.label::before { display: none; }
+.leaflet-tooltip.label.read { color: var(--muted); }
+.no-labels .leaflet-tooltip.label { display: none; }
 
 /* ブックマーク済みのピン */
 .star {

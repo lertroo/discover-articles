@@ -72,7 +72,7 @@
     if (!readSet.size || !confirm('既読の記録をすべて消去しますか？')) return;
     readSet.clear();
     saveRead();
-    markers.forEach((m, id) => m.setIcon(pinIcon(id)));
+    markers.forEach((_, id) => refreshPin(id));
     cluster.refreshClusters();
   });
 
@@ -145,9 +145,27 @@
 
   const markers = new Map(); // pageid -> marker
 
+  // 既読の記事名は薄く表示する（ブックマーク済みは目立たせたいので除く）
+  const labelClass = id => 'label' + (readSet.has(id) && !isSaved(id) ? ' read' : '');
+
+  // 広域では記事名が重なって読めないので、ズーム15未満では隠す
+  const LABEL_MIN_ZOOM = 15;
+  const updateLabels = () =>
+    map.getContainer().classList.toggle('no-labels', map.getZoom() < LABEL_MIN_ZOOM);
+  map.on('zoomend', updateLabels);
+  updateLabels();
+
   function addMarker(item) {
     const m = L.marker([item.lat, item.lon], { icon: pinIcon(item.pageid), pageid: item.pageid, title: item.title });
     m.bindPopup(() => popupShell(item), { maxWidth: 280, minWidth: 200, autoPanPadding: [10, 10] });
+    // 記事名を常に表示。名前をタップしてもピンと同じく開く
+    m.bindTooltip(esc(item.title), {
+      permanent: true,
+      direction: 'right',
+      offset: [8, 0],
+      interactive: true,
+      className: labelClass(item.pageid),
+    });
     m.on('popupopen', () => { loadSummary(item, m); showArticle(item); });
     markers.set(item.pageid, m);
     return m;
@@ -244,6 +262,11 @@
     const m = markers.get(id);
     if (!m) return;
     m.setIcon(pinIcon(id));
+    const tip = m.getTooltip();
+    if (tip) {
+      tip.options.className = labelClass(id);
+      tip.getElement()?.classList.toggle('read', readSet.has(id) && !isSaved(id));
+    }
     m.setZIndexOffset(selected?.pageid === id ? 1000 : 0);
   }
 
