@@ -102,8 +102,9 @@ body {
 .seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 /* 本体：スマホは地図の下、広い画面は地図の左に記事パネル */
-.main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.main { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .panel {
+  position: relative;
   order: 2;
   max-height: 45%;
   overflow-y: auto;
@@ -112,7 +113,19 @@ body {
   background: var(--bg);
   border-top: 1px solid var(--border);
 }
-.panel[hidden] { display: none; }
+/* 全文表示：スマホは地図の上に全面、広い画面は左パネルを広げる */
+.panel.full {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  inset: 0;
+  z-index: 1001;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border-top: none;
+}
+.panel[hidden] { display: none !important; }
 @media (min-width: 768px) {
   .main { flex-direction: row; }
   .panel {
@@ -122,6 +135,7 @@ body {
     border-top: none;
     border-right: 1px solid var(--border);
   }
+  .panel.full { position: relative; inset: auto; flex: 0 0 min(55%, 760px); }
 }
 
 /* 地図 */
@@ -207,3 +221,16 @@ body {
 .panel .intro p { margin: 0 0 .6em; line-height: 1.55; }
 .panel .link { display: inline-block; color: var(--accent); font-weight: 600; }
 .panel .err { color: #c53030; }
+.panel .actions { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+
+.panel.full #panel-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.panel.full .close { position: absolute; top: 4px; right: 6px; margin: 0; z-index: 1; }
+.reader-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 44px 4px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.reader-bar .rtitle { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reader { flex: 1; width: 100%; border: 0; background: #fff; }

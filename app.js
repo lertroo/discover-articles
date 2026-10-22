@@ -237,15 +237,49 @@
       `<h2>${esc(item.title)}</h2>` +
       `<div class="dist">${esc(distanceText(item))}</div>` +
       body +
-      `<a class="link" href="${esc(url)}" target="_blank" rel="noopener">記事を開く</a>`;
+      `<div class="actions"><button class="btn small read-full" type="button">全文を読む</button>` +
+      `<a class="link" href="${esc(url)}" target="_blank" rel="noopener">別タブで開く</a></div>`;
     panelBody.querySelector('.link').addEventListener('click', () => markRead(item.pageid));
+    panelBody.querySelector('.read-full').addEventListener('click', () => openReader(item));
   }
+
+  // ---------- 全文表示（記事ページを iframe で埋め込む） ----------
+  const isFull = () => panel.classList.contains('full');
+
+  function openReader(item) {
+    const url = articleUrl(item.title);
+    markRead(item.pageid);
+    if (!isFull()) {
+      panel.classList.add('full');
+      // Android の戻る操作で全文表示を閉じられるよう、履歴を1つ積む
+      history.pushState({ reader: true }, '');
+    }
+    panelBody.innerHTML =
+      `<div class="reader-bar">` +
+      `<button class="btn small back" type="button">戻る</button>` +
+      `<span class="rtitle">${esc(item.title)}</span>` +
+      `<a class="link" href="${esc(url)}" target="_blank" rel="noopener">別タブ</a>` +
+      `</div>` +
+      `<iframe class="reader" src="${esc(url)}" title="${esc(item.title)}"></iframe>`;
+    // 記事内のリンクをたどった後は history.back() が iframe 側に効くので、ボタンでは直接閉じる
+    panelBody.querySelector('.back').addEventListener('click', exitReader);
+    map.invalidateSize();
+  }
+
+  function exitReader() {
+    panel.classList.remove('full');
+    map.invalidateSize();
+    if (selected) showArticle(selected);
+  }
+
+  window.addEventListener('popstate', () => { if (isFull()) exitReader(); });
 
   async function showArticle(item) {
     const prev = selected;
     selected = item;
     if (prev) refreshPin(prev.pageid);
     refreshPin(item.pageid);
+    if (isFull()) { openReader(item); return; } // 全文表示中に別のピンを選んだら、その記事の全文に切り替える
     renderPanel(item, '<p>読み込み中…</p>');
     panel.scrollTop = 0;
     if (panel.hidden) {
@@ -275,6 +309,7 @@
 
   function closePanel() {
     if (panel.hidden) return;
+    panel.classList.remove('full');
     const prev = selected;
     selected = null;
     if (prev) refreshPin(prev.pageid);
