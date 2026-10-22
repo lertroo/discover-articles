@@ -10,11 +10,8 @@
 - 開いた記事は既読としてピンが灰色になる（記録はブラウザのlocalStorage）
 - 「設定」から文字サイズ・ライト／ダーク・既読記録の消去
 
-## ローカルで動かす
-```
-python -m http.server 8000
-```
-http://localhost:8000/ を開く（位置情報は localhost か https でのみ動作）。
+## 公開ページ
+https://lertroo.github.io/discover-articles/
 
 ## 使用しているもの
 - [Leaflet](https://leafletjs.com/) / [Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster)
