@@ -10,6 +10,19 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <link rel="stylesheet" href="style.css">
+<script>
+  (() => {
+    if (location.hostname !== 'lertroo.github.io' || !navigator.sendBeacon) return;
+    try {
+      navigator.sendBeacon('https://access-log.lertroo.workers.dev/hit', JSON.stringify({
+        site: 'discover-articles', path: location.pathname, query: location.search, title: document.title,
+        ref: document.referrer, lang: navigator.language,
+        screen: screen.width + 'x' + screen.height, viewport: innerWidth + 'x' + innerHeight,
+        tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      }));
+    } catch {}
+  })();
+</script>
 </head>
 <body>
 <header class="bar">
@@ -51,6 +64,7 @@
     <span class="label">既読</span>
     <button id="btn-clear-read" class="btn small" type="button">既読記録を消去</button>
   </div>
+  <p class="note">このページは、アクセスの日時・IPアドレス・おおよその地域・ブラウザの種類などを記録しています。</p>
 </div>
 <form id="search" class="search" role="search" hidden>
   <input id="search-q" class="search-q" type="search" placeholder="住所・地名（例：京都市左京区）" enterkeyhint="search" autocomplete="off" aria-label="住所・地名">
