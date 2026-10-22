@@ -15,6 +15,7 @@
 <header class="bar">
   <h1 class="title">Discover Articles</h1>
   <span id="status" class="status" aria-live="polite"></span>
+  <button id="btn-search" class="btn" type="button" title="住所で探す" aria-expanded="false" aria-controls="search">検索</button>
   <button id="btn-locate" class="btn" type="button" title="現在地へ移動">現在地</button>
   <button id="btn-menu" class="btn" type="button" title="設定" aria-expanded="false" aria-controls="menu">設定</button>
 </header>
@@ -51,6 +52,11 @@
     <button id="btn-clear-read" class="btn small" type="button">既読記録を消去</button>
   </div>
 </div>
+<form id="search" class="search" role="search" hidden>
+  <input id="search-q" class="search-q" type="search" placeholder="住所・地名（例：京都市左京区）" enterkeyhint="search" autocomplete="off" aria-label="住所・地名">
+  <button class="btn" type="submit">探す</button>
+  <ul id="search-results" class="results" hidden></ul>
+</form>
 <div class="main">
   <aside id="panel" class="panel" hidden aria-label="記事">
     <button id="panel-close" class="close" type="button" aria-label="閉じる">×</button>

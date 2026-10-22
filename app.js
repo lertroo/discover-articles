@@ -584,6 +584,87 @@
 
   btnLocate.addEventListener('click', () => locate(false));
 
+  // ---------- 住所検索（国土地理院の住所検索API） ----------
+  const GSI_SEARCH = 'https://msearch.gsi.go.jp/address-search/AddressSearch?q=';
+  const MAX_RESULTS = 50;
+  const searchForm = document.getElementById('search');
+  const searchQ = document.getElementById('search-q');
+  const resultsEl = document.getElementById('search-results');
+  const btnSearch = document.getElementById('btn-search');
+  let searchMarker = null;
+
+  const hideResults = () => { resultsEl.hidden = true; };
+  function showMessage(text) {
+    resultsEl.innerHTML = `<li class="msg">${esc(text)}</li>`;
+    resultsEl.hidden = false;
+  }
+
+  btnSearch.addEventListener('click', () => {
+    searchForm.hidden = !searchForm.hidden;
+    btnSearch.setAttribute('aria-expanded', String(!searchForm.hidden));
+    hideResults();
+    map.invalidateSize();
+    if (!searchForm.hidden) searchQ.focus();
+  });
+
+  searchForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const q = searchQ.value.trim();
+    if (!q) return;
+    showMessage('検索中…');
+    let found;
+    try {
+      const res = await fetch(GSI_SEARCH + encodeURIComponent(q));
+      found = await res.json();
+    } catch {
+      showMessage('検索できませんでした。');
+      return;
+    }
+    // 同じ名前・同じ位置の重複を除く
+    const seen = new Set();
+    const all = (Array.isArray(found) ? found : []).filter(f => {
+      const key = f.properties?.title + '|' + f.geometry?.coordinates;
+      if (!f.geometry?.coordinates || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    if (!all.length) { showMessage('見つかりませんでした。'); return; }
+    const list = all.slice(0, MAX_RESULTS);
+
+    resultsEl.innerHTML = list.map((f, i) =>
+      `<li><button type="button" data-i="${i}">${esc(f.properties.title)}</button></li>`).join('') +
+      (all.length > list.length
+        ? `<li class="msg">ほかに${all.length - list.length}件。県名や市区町村名を足すと絞り込めます。</li>` : '');
+    resultsEl.hidden = false;
+    resultsEl.onclick = ev => {
+      const i = ev.target.closest('button')?.dataset.i;
+      if (i !== undefined) goTo(list[+i]);
+    };
+  });
+
+  function goTo(f) {
+    const [lon, lat] = f.geometry.coordinates;
+    const ll = L.latLng(lat, lon);
+    if (!searchMarker) {
+      searchMarker = L.marker(ll, {
+        icon: L.divIcon({ className: '', html: '<div class="spot"></div>', iconSize: [14, 14] }),
+        interactive: false,
+        zIndexOffset: 900,
+      }).addTo(map);
+    }
+    searchMarker.setLatLng(ll)
+      .unbindTooltip()
+      .bindTooltip(esc(f.properties.title), { permanent: true, direction: 'right', offset: [8, 0], className: 'label' });
+    hideResults();
+    searchQ.blur(); // スマホのキーボードを閉じる
+    map.setView(ll, Math.max(map.getZoom(), 16));
+  }
+
+  searchQ.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { hideResults(); e.stopPropagation(); } // 記事パネルまで閉じないように
+  });
+  map.on('click', hideResults);
+
   // 起動時：まず既定の地点で取得し、現在地が取れたら移動する
   fetchArticles();
   locate(true);

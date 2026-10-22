@@ -115,6 +115,69 @@ body {
 .seg button:last-child { border-radius: 0 6px 6px 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+/* 住所検索 */
+.search {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  z-index: 1050;
+}
+.search[hidden] { display: none; }
+.search-q {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: .95rem;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--fg);
+}
+.results {
+  position: absolute;
+  top: 100%;
+  left: 8px;
+  right: 8px;
+  max-height: 50vh;
+  overflow-y: auto;
+  margin: 2px 0 0;
+  padding: 2px 0;
+  list-style: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+}
+.results[hidden] { display: none; }
+.results button {
+  display: block;
+  width: 100%;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: .9rem;
+  text-align: left;
+  border: none;
+  background: none;
+  color: var(--fg);
+  cursor: pointer;
+}
+.results button:hover, .results button:focus { background: var(--surface); }
+.results .msg { padding: 5px 10px; color: var(--muted); font-size: .9rem; }
+
+/* 検索した地点 */
+.spot {
+  width: 14px;
+  height: 14px;
+  background: #dd6b20;
+  border: 2px solid #fff;
+  transform: rotate(45deg);
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+
 /* 本体：スマホは地図の下、広い画面は地図の左に記事パネル */
 .main { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .panel {
