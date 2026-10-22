@@ -1,0 +1,162 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1a202c;
+  --muted: #5a6475;
+  --border: #d5dae1;
+  --surface: #f4f6f8;
+  --accent: #2b6cb0;
+  --pin: #2b6cb0;
+  --pin-read: #9aa3ae;
+  --font-base: 15px;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #1b1f24;
+  --fg: #e6e9ed;
+  --muted: #9aa3ae;
+  --border: #3a414a;
+  --surface: #262b32;
+  --accent: #63a4ff;
+  --pin: #4f94f0;
+  --pin-read: #6b737d;
+  color-scheme: dark;
+}
+:root[data-font="s"] { --font-base: 13px; }
+:root[data-font="m"] { --font-base: 15px; }
+:root[data-font="l"] { --font-base: 18px; }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  font: var(--font-base)/1.4 system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+
+/* ヘッダー */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  padding-top: max(4px, env(safe-area-inset-top));
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  z-index: 1000;
+}
+.title { margin: 0; font-size: 1rem; font-weight: 700; white-space: nowrap; }
+.status {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: .85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn {
+  font: inherit;
+  font-size: .9rem;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+}
+.btn:active { filter: brightness(.92); }
+.btn.small { font-size: .85rem; padding: 3px 8px; }
+.btn.busy { opacity: .6; }
+
+/* 設定メニュー */
+.menu {
+  position: absolute;
+  right: 8px;
+  top: calc(var(--bar-h, 40px) + 4px);
+  z-index: 1100;
+  min-width: 220px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+}
+.menu[hidden] { display: none; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; }
+.label { font-size: .9rem; color: var(--muted); }
+.seg { display: flex; }
+.seg button {
+  font: inherit;
+  font-size: .85rem;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+}
+.seg button + button { border-left: none; }
+.seg button:first-child { border-radius: 6px 0 0 6px; }
+.seg button:last-child { border-radius: 0 6px 6px 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* 地図 */
+#map { flex: 1; min-height: 0; background: var(--surface); }
+:root[data-theme="dark"] .leaflet-tile-pane { filter: brightness(.85); }
+
+.leaflet-container { font: inherit; font-size: .9rem; }
+.leaflet-control-layers,
+.leaflet-bar a,
+.leaflet-control-attribution { background: var(--bg) !important; color: var(--fg) !important; }
+.leaflet-control-attribution a { color: var(--accent); }
+.leaflet-bar a { border-bottom-color: var(--border) !important; }
+.leaflet-control-layers-expanded { padding: 4px 8px; }
+
+/* 記事ピン */
+.pin {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--pin);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.pin.read { background: var(--pin-read); }
+
+/* 現在地 */
+.here {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e53e3e;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(229,62,62,.35);
+}
+
+/* クラスタ */
+.cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--pin);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.4);
+}
+.cluster.read { background: var(--pin-read); }
+
+/* ポップアップ */
+.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--bg); color: var(--fg); }
+.leaflet-popup-content { margin: 8px 10px; font-size: .9rem; line-height: 1.45; }
+.leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+.pop h2 { margin: 0 18px 2px 0; font-size: 1rem; }
+.pop .dist { color: var(--muted); font-size: .8rem; margin-bottom: 4px; }
+.pop .thumb { float: right; max-width: 90px; max-height: 90px; margin: 0 0 4px 6px; border-radius: 4px; }
+.pop .extract { margin: 0; max-height: 11em; overflow-y: auto; }
+.pop .link { display: inline-block; margin-top: 6px; color: var(--accent); font-weight: 600; }
+.pop .clear { clear: both; }
+.pop .err { color: #c53030; }

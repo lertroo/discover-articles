@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Discover Articles</title>
+<meta name="description" content="地図上で近くの記事を探す">
+<meta name="theme-color" content="#2b6cb0">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="bar">
+  <h1 class="title">Discover Articles</h1>
+  <span id="status" class="status" aria-live="polite"></span>
+  <button id="btn-locate" class="btn" type="button" title="現在地へ移動">現在地</button>
+  <button id="btn-menu" class="btn" type="button" title="設定" aria-expanded="false" aria-controls="menu">設定</button>
+</header>
+<div id="menu" class="menu" hidden>
+  <div class="row">
+    <span class="label">文字サイズ</span>
+    <div class="seg" id="font-seg">
+      <button type="button" data-font="s">小</button>
+      <button type="button" data-font="m">中</button>
+      <button type="button" data-font="l">大</button>
+    </div>
+  </div>
+  <div class="row">
+    <span class="label">表示</span>
+    <div class="seg" id="theme-seg">
+      <button type="button" data-theme="light">ライト</button>
+      <button type="button" data-theme="dark">ダーク</button>
+    </div>
+  </div>
+  <div class="row">
+    <span class="label">既読</span>
+    <button id="btn-clear-read" class="btn small" type="button">既読記録を消去</button>
+  </div>
+</div>
+<main id="map"></main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
