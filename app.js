@@ -125,8 +125,9 @@
   };
 
   const cluster = L.markerClusterGroup({
-    maxClusterRadius: 45,
-    disableClusteringAtZoom: 18,
+    // 記事名が見えるよう、拡大するほどまとめる範囲を狭くする
+    maxClusterRadius: z => (z >= 16 ? 18 : z >= 15 ? 28 : 45),
+    disableClusteringAtZoom: 17,
     showCoverageOnHover: false,
     chunkedLoading: true,
     iconCreateFunction(c) {
@@ -156,7 +157,7 @@
   updateLabels();
 
   function addMarker(item) {
-    const m = L.marker([item.lat, item.lon], { icon: pinIcon(item.pageid), pageid: item.pageid, title: item.title });
+    const m = L.marker([item.lat, item.lon], { icon: pinIcon(item.pageid), pageid: item.pageid });
     m.bindPopup(() => popupShell(item), { maxWidth: 280, minWidth: 200, autoPanPadding: [10, 10] });
     // 記事名を常に表示。名前をタップしてもピンと同じく開く
     m.bindTooltip(esc(item.title), {
