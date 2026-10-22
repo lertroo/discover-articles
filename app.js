@@ -11,6 +11,7 @@
   const KEY_THEME = 'da-theme';
   const KEY_FONT = 'da-font';
   const KEY_BM = 'da-bookmarks';
+  const KEY_READER = 'da-reader';
 
   // ---------- localStorage ----------
   const store = {
@@ -263,9 +264,16 @@
 
   // ---------- 全文表示（記事ページを iframe で埋め込む） ----------
   const isFull = () => panel.classList.contains('full');
+  let readerMode = store.get(KEY_READER, false); // true：ピンを選んだら全文で開く
+
+  function setReaderMode(on) {
+    readerMode = on;
+    store.set(KEY_READER, on);
+  }
 
   function openReader(item) {
     const url = articleUrl(item.title);
+    setReaderMode(true);
     markRead(item.pageid);
     if (!isFull()) {
       panel.classList.add('full');
@@ -288,6 +296,7 @@
   }
 
   function exitReader() {
+    setReaderMode(false);
     panel.classList.remove('full');
     map.invalidateSize();
     if (selected) showArticle(selected);
@@ -397,7 +406,12 @@
     selected = item;
     if (prev) refreshPin(prev.pageid);
     refreshPin(item.pageid);
-    if (isFull()) { openReader(item); return; } // 全文表示中に別のピンを選んだら、その記事の全文に切り替える
+    // 「全文を読む」を選んだ後は、最初から全文で開く（「戻る」で要約表示に戻すまで）
+    if (readerMode) {
+      panel.hidden = false;
+      openReader(item);
+      return;
+    }
     renderPanel(item, '<p>読み込み中…</p>');
     panel.scrollTop = 0;
     if (panel.hidden) {
