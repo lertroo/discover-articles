@@ -104,7 +104,7 @@
   // ---------- ピン ----------
   const pinIcon = id => L.divIcon({
     className: '',
-    html: `<div class="pin${readSet.has(id) ? ' read' : ''}"></div>`,
+    html: `<div class="pin${readSet.has(id) ? ' read' : ''}${selected?.pageid === id ? ' sel' : ''}"></div>`,
     iconSize: [16, 16],
     iconAnchor: [8, 8],
     popupAnchor: [0, -8],
@@ -133,7 +133,7 @@
   function addMarker(item) {
     const m = L.marker([item.lat, item.lon], { icon: pinIcon(item.pageid), pageid: item.pageid, title: item.title });
     m.bindPopup(() => popupShell(item), { maxWidth: 280, minWidth: 200, autoPanPadding: [10, 10] });
-    m.on('popupopen', () => loadSummary(item, m));
+    m.on('popupopen', () => { loadSummary(item, m); showArticle(item); });
     markers.set(item.pageid, m);
     return m;
   }
@@ -142,9 +142,8 @@
     if (readSet.has(id)) return;
     readSet.add(id);
     saveRead();
-    const m = markers.get(id);
-    if (m) m.setIcon(pinIcon(id));
-    cluster.refreshClusters(m);
+    refreshPin(id);
+    cluster.refreshClusters(markers.get(id));
   }
 
   // ---------- ポップアップ ----------
@@ -173,22 +172,45 @@
     return el;
   }
 
+  // 取得中の Promise ごと保存し、吹き出しとパネルで同じ取得を共有する。失敗したら消して再取得できるようにする
+  function cached(cache, key, load) {
+    if (!cache.has(key)) cache.set(key, load().catch(e => { cache.delete(key); throw e; }));
+    return cache.get(key);
+  }
+
   const summaryCache = new Map();
+  const getSummary = item => cached(summaryCache, item.pageid, async () => {
+    const res = await fetch(SUMMARY_API + encodeURIComponent(item.title.replace(/ /g, '_')));
+    if (!res.ok) throw new Error(res.status);
+    return res.json();
+  });
+
+  // 記事冒頭（導入部）の全文
+  const introCache = new Map();
+  const getIntro = item => cached(introCache, item.pageid, async () => {
+    const params = new URLSearchParams({
+      action: 'query',
+      prop: 'extracts',
+      exintro: '1',
+      explaintext: '1',
+      pageids: String(item.pageid),
+      format: 'json',
+      formatversion: '2',
+      origin: '*',
+    });
+    const data = await (await fetch(`${API}?${params}`)).json();
+    return data.query?.pages?.[0]?.extract || '';
+  });
 
   async function loadSummary(item, marker) {
-    let s = summaryCache.get(item.pageid);
-    if (!s) {
-      try {
-        const res = await fetch(SUMMARY_API + encodeURIComponent(item.title.replace(/ /g, '_')));
-        if (!res.ok) throw new Error(res.status);
-        s = await res.json();
-        summaryCache.set(item.pageid, s);
-      } catch {
-        if (marker.isPopupOpen()) {
-          marker.setPopupContent(popupShell(item, '<p class="extract err">要約を取得できませんでした。</p>'));
-        }
-        return;
+    let s;
+    try {
+      s = await getSummary(item);
+    } catch {
+      if (marker.isPopupOpen()) {
+        marker.setPopupContent(popupShell(item, '<p class="extract err">要約を取得できませんでした。</p>'));
       }
+      return;
     }
     if (!marker.isPopupOpen()) return;
     const thumb = s.thumbnail?.source
@@ -197,6 +219,72 @@
     const url = s.content_urls?.mobile?.page || articleUrl(item.title);
     marker.setPopupContent(popupShell(item, `${thumb}<p class="extract">${extract}</p>`, url));
   }
+
+  // ---------- 記事パネル（スマホは地図の下、広い画面は左） ----------
+  const panel = document.getElementById('panel');
+  const panelBody = document.getElementById('panel-body');
+  let selected = null; // パネルに表示中の記事
+
+  function refreshPin(id) {
+    const m = markers.get(id);
+    if (!m) return;
+    m.setIcon(pinIcon(id));
+    m.setZIndexOffset(selected?.pageid === id ? 1000 : 0);
+  }
+
+  function renderPanel(item, body, url = articleUrl(item.title)) {
+    panelBody.innerHTML =
+      `<h2>${esc(item.title)}</h2>` +
+      `<div class="dist">${esc(distanceText(item))}</div>` +
+      body +
+      `<a class="link" href="${esc(url)}" target="_blank" rel="noopener">記事を開く</a>`;
+    panelBody.querySelector('.link').addEventListener('click', () => markRead(item.pageid));
+  }
+
+  async function showArticle(item) {
+    const prev = selected;
+    selected = item;
+    if (prev) refreshPin(prev.pageid);
+    refreshPin(item.pageid);
+    renderPanel(item, '<p>読み込み中…</p>');
+    panel.scrollTop = 0;
+    if (panel.hidden) {
+      panel.hidden = false;
+      map.invalidateSize();
+      // パネルで地図が狭くなり、ピンが隠れたら寄せる
+      const ll = L.latLng(item.lat, item.lon);
+      if (!map.getBounds().contains(ll)) map.panTo(ll);
+    }
+
+    const [s, intro] = await Promise.all([
+      getSummary(item).catch(() => null),
+      getIntro(item).catch(() => null),
+    ]);
+    if (selected !== item) return;
+    if (!s && intro === null) {
+      renderPanel(item, '<p class="err">記事を取得できませんでした。</p>');
+      return;
+    }
+    const img = s?.thumbnail?.source
+      ? `<img class="image" src="${esc(s.thumbnail.source)}" alt="">` : '';
+    const text = intro || s?.extract || '';
+    const paras = text.split(/\n+/).filter(Boolean).map(p => `<p>${esc(p)}</p>`).join('');
+    renderPanel(item, `${img}<div class="intro">${paras || '<p>説明はありません。</p>'}</div>`,
+      s?.content_urls?.mobile?.page || articleUrl(item.title));
+  }
+
+  function closePanel() {
+    if (panel.hidden) return;
+    const prev = selected;
+    selected = null;
+    if (prev) refreshPin(prev.pageid);
+    panel.hidden = true;
+    map.closePopup();
+    map.invalidateSize();
+  }
+
+  document.getElementById('panel-close').addEventListener('click', closePanel);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
 
   // ---------- 記事の取得 ----------
   const statusEl = document.getElementById('status');
@@ -265,7 +353,7 @@
     const ids = new Set(items.map(i => i.pageid));
     const toRemove = [];
     markers.forEach((m, id) => {
-      if (!ids.has(id) && !m.isPopupOpen()) { toRemove.push(m); markers.delete(id); }
+      if (!ids.has(id) && !m.isPopupOpen() && selected?.pageid !== id) { toRemove.push(m); markers.delete(id); }
     });
     cluster.removeLayers(toRemove);
     const toAdd = items.filter(i => !markers.has(i.pageid)).map(addMarker);
@@ -303,6 +391,8 @@
         hereCircle.setLatLng(here).setRadius(acc);
       }
       map.setView(here, Math.max(map.getZoom(), 15));
+      const dist = panelBody.querySelector('.dist');
+      if (selected && dist) dist.textContent = distanceText(selected);
     }, err => {
       btnLocate.classList.remove('busy');
       if (!silent) {

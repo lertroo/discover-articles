@@ -39,7 +39,13 @@
     <button id="btn-clear-read" class="btn small" type="button">既読記録を消去</button>
   </div>
 </div>
-<main id="map"></main>
+<div class="main">
+  <aside id="panel" class="panel" hidden aria-label="記事">
+    <button id="panel-close" class="close" type="button" aria-label="閉じる">×</button>
+    <div id="panel-body"></div>
+  </aside>
+  <main id="map"></main>
+</div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="app.js"></script>

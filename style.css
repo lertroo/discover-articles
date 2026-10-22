@@ -101,6 +101,29 @@ body {
 .seg button:last-child { border-radius: 0 6px 6px 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+/* 本体：スマホは地図の下、広い画面は地図の左に記事パネル */
+.main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.panel {
+  order: 2;
+  max-height: 45%;
+  overflow-y: auto;
+  padding: 8px 10px 10px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+.panel[hidden] { display: none; }
+@media (min-width: 768px) {
+  .main { flex-direction: row; }
+  .panel {
+    order: 0;
+    flex: 0 0 340px;
+    max-height: none;
+    border-top: none;
+    border-right: 1px solid var(--border);
+  }
+}
+
 /* 地図 */
 #map { flex: 1; min-height: 0; background: var(--surface); }
 :root[data-theme="dark"] .leaflet-tile-pane { filter: brightness(.85); }
@@ -123,6 +146,7 @@ body {
   box-shadow: 0 1px 3px rgba(0,0,0,.4);
 }
 .pin.read { background: var(--pin-read); }
+.pin.sel { transform: scale(1.4); box-shadow: 0 0 0 3px var(--accent); }
 
 /* 現在地 */
 .here {
@@ -160,3 +184,26 @@ body {
 .pop .link { display: inline-block; margin-top: 6px; color: var(--accent); font-weight: 600; }
 .pop .clear { clear: both; }
 .pop .err { color: #c53030; }
+
+/* 記事パネルの中身 */
+.close {
+  position: sticky;
+  top: 0;
+  float: right;
+  margin: -4px -4px 0 6px;
+  width: 30px;
+  height: 30px;
+  font-size: 1.2rem;
+  line-height: 1;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+.panel h2 { margin: 0 0 2px; font-size: 1.05rem; }
+.panel .dist { color: var(--muted); font-size: .8rem; margin-bottom: 6px; }
+.panel .image { display: block; width: 100%; max-height: 220px; object-fit: contain; margin-bottom: 6px; border-radius: 4px; background: var(--surface); }
+.panel .intro p { margin: 0 0 .6em; line-height: 1.55; }
+.panel .link { display: inline-block; color: var(--accent); font-weight: 600; }
+.panel .err { color: #c53030; }
