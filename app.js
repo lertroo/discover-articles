@@ -127,7 +127,6 @@
     maxClusterRadius: z => (z >= 16 ? 18 : z >= 15 ? 28 : 45),
     disableClusteringAtZoom: 17,
     showCoverageOnHover: false,
-    chunkedLoading: true,
     iconCreateFunction(c) {
       const children = c.getAllChildMarkers();
       const allRead = children.every(m => readSet.has(m.options.pageid));
@@ -147,12 +146,23 @@
   // 既読の記事名は薄く表示する（ブックマーク済みは目立たせたいので除く）
   const labelClass = id => 'label' + (readSet.has(id) && !isSaved(id) ? ' read' : '');
 
-  // 広域では記事名が重なって読めないので、ズーム15未満では隠す
+  // 記事名は、ズーム15以上か、画面に単独で出ているピンが少ないとき（重なりにくい）に出す
   const LABEL_MIN_ZOOM = 15;
-  const updateLabels = () =>
-    map.getContainer().classList.toggle('no-labels', map.getZoom() < LABEL_MIN_ZOOM);
-  map.on('zoomend', updateLabels);
-  updateLabels();
+  const LABEL_MAX_PINS = 40;
+  function updateLabels() {
+    let show = map.getZoom() >= LABEL_MIN_ZOOM;
+    if (!show) {
+      const view = map.getBounds();
+      let n = 0;
+      for (const m of markers.values()) {
+        if (cluster.getVisibleParent(m) === m && view.contains(m.getLatLng()) && ++n > LABEL_MAX_PINS) break;
+      }
+      show = n <= LABEL_MAX_PINS;
+    }
+    map.getContainer().classList.toggle('no-labels', !show);
+  }
+  map.on('zoomend moveend', updateLabels);
+  cluster.on('animationend', updateLabels);
 
   function addMarker(item) {
     const m = L.marker([item.lat, item.lon], { icon: pinIcon(item.pageid), pageid: item.pageid });
@@ -488,7 +498,7 @@
     timer = setTimeout(fetchArticles, FETCH_DELAY);
   }
 
-  async function fetchArticles() {
+  async function fetchArticles(retry = 1) {
     if (map.getZoom() < MIN_ZOOM_FOR_SEARCH) {
       if (controller) controller.abort();
       setStatus('拡大すると記事を表示します');
@@ -518,7 +528,13 @@
       setStatus(`${n}件${n >= 500 ? '（上限）' : ''}${clipped ? '・中心付近のみ' : ''}`);
     } catch (e) {
       if (e.name === 'AbortError') return;
-      setStatus('記事を取得できませんでした');
+      // スマホの通信は一時的に失敗しやすいので、少し待って1回だけ取り直す
+      if (retry > 0) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fetchArticles(retry - 1), 2000);
+        return;
+      }
+      setStatus('記事を取得できませんでした（地図を動かすと再試行）');
     }
   }
 
@@ -537,6 +553,7 @@
     cluster.removeLayers(toRemove);
     const toAdd = items.filter(i => !markers.has(i.pageid)).map(addMarker);
     cluster.addLayers(toAdd);
+    updateLabels();
   }
 
   map.on('moveend', scheduleFetch);
