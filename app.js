@@ -112,7 +112,6 @@
         html: `<div class="star${sel}">★</div>`,
         iconSize: [22, 22],
         iconAnchor: [11, 11],
-        popupAnchor: [0, -10],
       });
     }
     return L.divIcon({
@@ -120,7 +119,6 @@
       html: `<div class="pin${readSet.has(id) ? ' read' : ''}${sel}"></div>`,
       iconSize: [16, 16],
       iconAnchor: [8, 8],
-      popupAnchor: [0, -8],
     });
   };
 
@@ -158,8 +156,7 @@
 
   function addMarker(item) {
     const m = L.marker([item.lat, item.lon], { icon: pinIcon(item.pageid), pageid: item.pageid });
-    m.bindPopup(() => popupShell(item), { maxWidth: 280, minWidth: 200, autoPanPadding: [10, 10] });
-    // 記事名を常に表示。名前をタップしてもピンと同じく開く
+    // 記事名を常に表示。名前をタップしてもピンと同じく開く（tooltip の click はマーカーに伝わる）
     m.bindTooltip(esc(item.title), {
       permanent: true,
       direction: 'right',
@@ -167,7 +164,7 @@
       interactive: true,
       className: labelClass(item.pageid),
     });
-    m.on('popupopen', () => { loadSummary(item, m); showArticle(item); });
+    m.on('click', () => showArticle(item));
     markers.set(item.pageid, m);
     return m;
   }
@@ -180,7 +177,7 @@
     cluster.refreshClusters(markers.get(id));
   }
 
-  // ---------- ポップアップ ----------
+  // ---------- 記事データの取得と表示の共通部品 ----------
   const esc = s => String(s).replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -193,20 +190,7 @@
     return '現在地から ' + (d < 1000 ? Math.round(d) + 'm' : (d / 1000).toFixed(d < 10000 ? 1 : 0) + 'km');
   }
 
-  function popupShell(item, body = '<p class="extract">読み込み中…</p>', url = articleUrl(item.title)) {
-    const el = document.createElement('div');
-    el.className = 'pop';
-    el.innerHTML =
-      `<h2>${esc(item.title)}</h2>` +
-      `<div class="dist">${esc(distanceText(item))}</div>` +
-      body +
-      `<div class="clear"></div>` +
-      `<a class="link" href="${esc(url)}" target="_blank" rel="noopener">記事を開く</a>`;
-    el.querySelector('.link').addEventListener('click', () => markRead(item.pageid));
-    return el;
-  }
-
-  // 取得中の Promise ごと保存し、吹き出しとパネルで同じ取得を共有する。失敗したら消して再取得できるようにする
+  // 取得中の Promise ごと保存し、同じ記事を選び直しても取り直さない。失敗したら消して再取得できるようにする
   function cached(cache, key, load) {
     if (!cache.has(key)) cache.set(key, load().catch(e => { cache.delete(key); throw e; }));
     return cache.get(key);
@@ -236,23 +220,6 @@
     return data.query?.pages?.[0]?.extract || '';
   });
 
-  async function loadSummary(item, marker) {
-    let s;
-    try {
-      s = await getSummary(item);
-    } catch {
-      if (marker.isPopupOpen()) {
-        marker.setPopupContent(popupShell(item, '<p class="extract err">要約を取得できませんでした。</p>'));
-      }
-      return;
-    }
-    if (!marker.isPopupOpen()) return;
-    const thumb = s.thumbnail?.source
-      ? `<img class="thumb" src="${esc(s.thumbnail.source)}" alt="" loading="lazy">` : '';
-    const extract = s.extract ? esc(s.extract) : '要約はありません。';
-    const url = s.content_urls?.mobile?.page || articleUrl(item.title);
-    marker.setPopupContent(popupShell(item, `${thumb}<p class="extract">${extract}</p>`, url));
-  }
 
   // ---------- 記事パネル（スマホは地図の下、広い画面は左） ----------
   const panel = document.getElementById('panel');
@@ -486,7 +453,6 @@
     selected = null;
     if (prev) refreshPin(prev.pageid);
     panel.hidden = true;
-    map.closePopup();
     map.invalidateSize();
   }
 
@@ -566,7 +532,7 @@
     extra.forEach(i => ids.add(i.pageid));
     const toRemove = [];
     markers.forEach((m, id) => {
-      if (!ids.has(id) && !m.isPopupOpen() && selected?.pageid !== id) { toRemove.push(m); markers.delete(id); }
+      if (!ids.has(id) && selected?.pageid !== id) { toRemove.push(m); markers.delete(id); }
     });
     cluster.removeLayers(toRemove);
     const toAdd = items.filter(i => !markers.has(i.pageid)).map(addMarker);

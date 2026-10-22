@@ -246,18 +246,6 @@ body {
   border: 2px solid #fff;
 }
 
-/* ポップアップ */
-.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--bg); color: var(--fg); }
-.leaflet-popup-content { margin: 8px 10px; font-size: .9rem; line-height: 1.45; }
-.leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
-.pop h2 { margin: 0 18px 2px 0; font-size: 1rem; }
-.pop .dist { color: var(--muted); font-size: .8rem; margin-bottom: 4px; }
-.pop .thumb { float: right; max-width: 90px; max-height: 90px; margin: 0 0 4px 6px; border-radius: 4px; }
-.pop .extract { margin: 0; max-height: 11em; overflow-y: auto; }
-.pop .link { display: inline-block; margin-top: 6px; color: var(--accent); font-weight: 600; }
-.pop .clear { clear: both; }
-.pop .err { color: #c53030; }
-
 /* 記事パネルの中身 */
 .close {
   position: sticky;
