@@ -271,6 +271,12 @@
     m.setZIndexOffset(selected?.pageid === id ? 1000 : 0);
   }
 
+  // パネルで地図が狭くなり、ピンが隠れたら寄せる
+  function keepInView(item) {
+    const ll = L.latLng(item.lat, item.lon);
+    if (!map.getBounds().contains(ll)) map.panTo(ll);
+  }
+
   function renderPanel(item, body, url = articleUrl(item.title)) {
     panelBody.innerHTML =
       `<h2>${esc(item.title)}</h2>` +
@@ -289,6 +295,7 @@
   // ---------- 全文表示（記事ページを iframe で埋め込む） ----------
   const isFull = () => panel.classList.contains('full');
   let readerMode = store.get(KEY_READER, false); // true：ピンを選んだら全文で開く
+  let readerMax = false; // スマホで全文を全面に広げているか（次の記事にも引き継ぐ）
 
   function setReaderMode(on) {
     readerMode = on;
@@ -308,12 +315,22 @@
       `<div class="reader-bar">` +
       `<button class="btn small back" type="button">戻る</button>` +
       `<span class="rtitle">${esc(item.title)}</span>` +
-      `<button class="btn small bm" type="button"></button>` +
+      `<button class="btn small size" type="button"></button>` +
+      `<button class="btn small bm icon" type="button"></button>` +
       `<a class="link" href="${esc(url)}" target="_blank" rel="noopener">別タブ</a>` +
       `</div>` +
       `<iframe class="reader" src="${esc(url)}" title="${esc(item.title)}"></iframe>`;
     panelBody.querySelector('.bm').addEventListener('click', () => toggleBookmark(item));
     updateBmUi(item);
+    const sizeBtn = panelBody.querySelector('.size');
+    const applySize = () => {
+      panel.classList.toggle('max', readerMax);
+      sizeBtn.textContent = readerMax ? '縮める' : '広げる';
+      map.invalidateSize();
+      if (!readerMax) keepInView(item);
+    };
+    sizeBtn.addEventListener('click', () => { readerMax = !readerMax; applySize(); });
+    applySize();
     // 記事内のリンクをたどった後は history.back() が iframe 側に効くので、ボタンでは直接閉じる
     panelBody.querySelector('.back').addEventListener('click', exitReader);
     map.invalidateSize();
@@ -321,7 +338,7 @@
 
   function exitReader() {
     setReaderMode(false);
-    panel.classList.remove('full');
+    panel.classList.remove('full', 'max');
     map.invalidateSize();
     if (selected) showArticle(selected);
   }
@@ -363,7 +380,8 @@
     const btn = panelBody.querySelector('.bm');
     if (btn) {
       const on = !!bm.items[item.pageid]?.lists.includes(bm.target);
-      btn.textContent = on ? '★ 保存済み' : '☆ 保存';
+      // 全文表示の上の帯は狭いので、記号だけにする
+      btn.textContent = btn.classList.contains('icon') ? (on ? '★' : '☆') : (on ? '★ 保存済み' : '☆ 保存');
       btn.setAttribute('aria-pressed', String(on));
       btn.title = '保存先：' + listName(bm.target);
     }
@@ -441,9 +459,7 @@
     if (panel.hidden) {
       panel.hidden = false;
       map.invalidateSize();
-      // パネルで地図が狭くなり、ピンが隠れたら寄せる
-      const ll = L.latLng(item.lat, item.lon);
-      if (!map.getBounds().contains(ll)) map.panTo(ll);
+      keepInView(item);
     }
 
     const [s, intro] = await Promise.all([
@@ -465,7 +481,7 @@
 
   function closePanel() {
     if (panel.hidden) return;
-    panel.classList.remove('full');
+    panel.classList.remove('full', 'max');
     const prev = selected;
     selected = null;
     if (prev) refreshPin(prev.pageid);

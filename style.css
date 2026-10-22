@@ -127,18 +127,16 @@ body {
   background: var(--bg);
   border-top: 1px solid var(--border);
 }
-/* 全文表示：スマホは地図の上に全面、広い画面は左パネルを広げる */
+/* 全文表示：スマホは地図の下に6割（「広げる」で全面）、広い画面は左パネルを広げる */
 .panel.full {
   display: flex;
   flex-direction: column;
-  position: absolute;
-  inset: 0;
-  z-index: 1001;
+  flex: 0 0 60%;
   max-height: none;
   padding: 0;
   overflow: hidden;
-  border-top: none;
 }
+.panel.full.max { position: absolute; inset: 0; z-index: 1001; border-top: none; }
 .panel[hidden] { display: none !important; }
 @media (min-width: 768px) {
   .main { flex-direction: row; }
@@ -149,7 +147,8 @@ body {
     border-top: none;
     border-right: 1px solid var(--border);
   }
-  .panel.full { position: relative; inset: auto; flex: 0 0 min(55%, 760px); }
+  .panel.full, .panel.full.max { position: relative; inset: auto; flex: 0 0 min(55%, 760px); }
+  .reader-bar .size { display: none; }
 }
 
 /* 地図 */
