@@ -685,4 +685,7 @@
   // 起動時：まず既定の地点で取得し、現在地が取れたら移動する
   fetchArticles();
   locate(true);
+
+  // ホーム画面に追加できるようにする
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
